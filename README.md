@@ -1,6 +1,6 @@
 # Terraform CDK YAML-Based Infrastructure Builder for AWS
 
-This project provides a dynamic and extensible Terraform CDK (CDKTF) based infrastructure-as-code solution for AWS, fully configured using a YAML file. It automatically manages resource naming (with custom name overrides), supports referencing existing resources, allows dynamic linking between resources, and integrates secret resolution.
+A fully cross-platform, PowerShell-driven Terraform CDK (CDKTF) solution for AWS infrastructure-as-code. This project provides a dynamic and extensible infrastructure framework fully configured using YAML files. It automatically manages resource naming (with custom name overrides), supports referencing existing resources, allows dynamic linking between resources, and integrates secret resolution.
 
 ## 📂 Project Structure
 
@@ -9,7 +9,7 @@ This project provides a dynamic and extensible Terraform CDK (CDKTF) based infra
 ├── main.py                # Entry point: loads YAML and builds AWS resources
 ├── awsterraform.py        # AWS-specific logic, naming conventions, and secret resolution
 ├── config.py              # Dataclasses and dynamic resource mapping
-├── config.yaml            # User-defined infrastructure configuration
+├── config-old.yaml        # Reference YAML configuration
 ├── main-test.py           # Tests for main functionality
 ├── example.py             # Example infrastructure built programmatically
 ├── lambda/                # Lambda function code
@@ -18,8 +18,7 @@ This project provides a dynamic and extensible Terraform CDK (CDKTF) based infra
 ├── cdktf.json             # Terraform CDK configuration
 ├── imports/               # Generated AWS provider bindings
 ├── setup.ps1              # Fully cross-platform setup script for development environment
-├── Makefile               # Simplifies common operations (Unix/macOS)
-├── make.ps1               # PowerShell alternative to Makefile (cross-platform)
+├── run.ps1                # PowerShell task runner (cross-platform)
 └── README.md              # Documentation (this file)
 ```
 
@@ -134,92 +133,56 @@ npx cdktf get
 # - On macOS/Linux: source .venv/bin/activate
 ```
 
-2. **Use the Makefile for common operations**:
+2. **Use the PowerShell scripts for operations**:
 
-**Using make (macOS/Linux):**
-```bash
-# Initialize and get providers
-make init
-
-# Plan the infrastructure deployment
-make plan
-
-# Deploy the infrastructure
-make deploy
-
-# Destroy the infrastructure
-make destroy
-
-# Run tests
-make test
-
-# Run the example
-make example
-```
-
-**Using PowerShell (cross-platform):**
 ```powershell
 # Initialize and get providers
-./make.ps1 init
+./run.ps1 init
 
 # Plan the infrastructure deployment
-./make.ps1 plan
+./run.ps1 plan
 
 # Deploy the infrastructure
-./make.ps1 deploy
+./run.ps1 deploy
 
 # Destroy the infrastructure
-./make.ps1 destroy
+./run.ps1 destroy
 
 # Run tests
-./make.ps1 test
+./run.ps1 test
 
 # Run the example
-./make.ps1 example
+./run.ps1 example
 
 # Create sample configuration
-./make.ps1 sample
+./run.ps1 sample
 
 # Show help
-./make.ps1 help
+./run.ps1 help
 ```
 
-> **Note:** The PowerShell script provides the same functionality as the Makefile but works across all platforms with PowerShell installed.
+> **Note:** All operations are designed to work seamlessly across Windows, macOS, and Linux.
 
 ### Manual Setup
 
-If you prefer to set up manually:
+If you prefer to set up manually instead of using the automated setup script:
 
-**For Bash (macOS/Linux):**
-```bash
-# Create and activate a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Generate AWS provider bindings
-npx cdktf get
-
-# Deploy using CDKTF
-npx cdktf deploy
-```
-
-**For PowerShell (Windows):**
+**Cross-platform with PowerShell:**
 ```powershell
-# Create and activate a virtual environment
+# Create Python virtual environment
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+
+# Activate environment (Windows)
+# .\.venv\Scripts\Activate.ps1
+
+# Activate environment (macOS/Linux via PowerShell)
+# & bash -c "source .venv/bin/activate && exec pwsh"
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Generate AWS provider bindings
 npx cdktf get
-
-# Deploy using CDKTF
-npx cdktf deploy
 ```
 
 ### Configuring AWS Credentials
@@ -264,20 +227,17 @@ The system automatically maps YAML resource types to Terraform provider resource
 
 ## 🧰 Cross-Platform Support
 
-This project is designed to work seamlessly across different operating systems:
+This project is designed to work seamlessly across different operating systems using PowerShell as the primary scripting language:
 
-### PowerShell vs Makefile
+### PowerShell Cross-Platform Benefits
 
-You can use either:
-- **Makefile**: Traditional approach for Unix-like systems (macOS/Linux)
-- **make.ps1**: PowerShell script that works on Windows, macOS, and Linux
-
-The PowerShell script offers several advantages:
-- Works on all major platforms (with PowerShell installed)
-- Provides colored output and better error handling
-- Automatically adapts to the operating system
-- Creates platform-specific setup scripts that handle environment differences
-- Simplifies Windows development experience
+The PowerShell scripts provide numerous advantages:
+- **Unified experience**: Works consistently on Windows, macOS, and Linux
+- **No shell script dependencies**: Everything runs with PowerShell, eliminating the need for separate Bash scripts
+- **Rich CLI experience**: Colored output and better error handling
+- **Automatic environment detection**: Adapts to the operating system automatically
+- **Python environment management**: Handles virtual environment activation across platforms
+- **Simplified development workflow**: One command set for all platforms
 
 ### Installing PowerShell (if not already available)
 
@@ -349,19 +309,13 @@ This configuration:
 - Directs generated code to the `imports/` directory
 - Sets default AWS region to us-east-1
 
-### Setup Scripts
+### 🔧 PowerShell Scripts
 
-The repository includes one primary setup script:
+The repository uses PowerShell as the primary scripting language for cross-platform compatibility:
 
-- `setup.ps1` (PowerShell): Fully cross-platform, works on Windows, macOS, and Linux
+- `setup.ps1`: Sets up the development environment by detecting the OS, installing dependencies, and configuring the project.
+- `run.ps1`: Provides a unified command interface for all operations (plan, deploy, destroy, test, etc.)
 
-The PowerShell script handles:
-- Checking for required dependencies (Node.js, npm)
-- Installing Node.js dependencies
-- Creating and activating a Python virtual environment
-- Installing Python dependencies from requirements.txt
-- Initializing the CDKTF environment
-
-The script automatically detects the operating system and adjusts its behavior accordingly, making it truly cross-platform.
+These scripts automatically detect the operating system and adjust their behavior accordingly, providing a consistent experience across Windows, macOS, and Linux without relying on platform-specific shell scripts.
 
 ### Configuring AWS Credentials
