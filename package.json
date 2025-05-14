@@ -1,0 +1,29 @@
+{
+  "name": "tf-cdk-python-aws",
+  "version": "1.0.0",
+  "description": "Terraform CDK YAML-Based Infrastructure Builder for AWS",
+  "main": "main.py",
+  "scripts": {
+    "test": "pytest",
+    "build": "npx cdktf synth",
+    "deploy": "npx cdktf deploy",
+    "plan": "npx cdktf plan",
+    "destroy": "npx cdktf destroy",
+    "get": "npx cdktf get"
+  },
+  "keywords": [
+    "terraform",
+    "cdktf",
+    "aws",
+    "infrastructure",
+    "iac",
+    "yaml"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cdktf": "^0.19.0",
+    "cdktf-cli": "^0.19.0",
+    "constructs": "^10.0.0"
+  }
+}

@@ -1,0 +1,209 @@
+team: "Business"
+service: "WebApp"
+environment: "prod"
+region: "us-east-1"
+tags:
+  owner: "Business-team"
+  project: "WebSocketApplication"
+
+aws_resources:
+  # IAM Roles for Lambda functions - move these to the top to resolve references
+  - name: "lambda-authorizer-role"
+    type: "iam_role.IamRole"
+    args:
+      name: "lambda-authorizer-role"
+      assume_role_policy: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+
+  - name: "lambda-main-role"
+    type: "iam_role.IamRole"
+    args:
+      name: "lambda-main-role"
+      assume_role_policy: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+
+  # S3 Web App (UI) - Bottom left in diagram
+  - name: "s3-webapp"
+    type: "s3_bucket.S3Bucket"
+    args:
+      bucket: "business-webapp-ui"
+      force_destroy: true
+      tags: 
+        Name: "Web app UI"
+        
+  - name: "s3-webapp-website"
+    type: "s3_bucket_website_configuration.S3BucketWebsiteConfiguration"
+    args:
+      bucket: "ref:s3-webapp.id"
+      index_document: 
+        suffix: "index.html"
+      error_document:
+        key: "error.html"
+        
+  - name: "s3-webapp-versioning"
+    type: "s3_bucket_versioning.S3BucketVersioningA"
+    args:
+      bucket: "ref:s3-webapp.id"
+      versioning_configuration:
+        status: "Enabled"
+
+  # CloudFront Distribution - #2 in diagram
+  - name: "cloudfront-oai"
+    type: "cloudfront_origin_access_identity.CloudfrontOriginAccessIdentity"
+    args:
+      comment: "OAI for S3 web app"
+
+  - name: "cloudfront-distribution"
+    type: "cloudfront_distribution.CloudfrontDistribution"
+    args:
+      enabled: true
+      comment: "Distribution for web app"
+      default_root_object: "index.html"
+      price_class: "PriceClass_100"
+      tags: 
+        Name: "WebApp CloudFront"
+      origin:
+        - domainName: "ref:s3-webapp.bucket_regional_domain_name"
+          originId: "S3Origin"
+          s3_origin_config:
+            origin_access_identity: "ref:cloudfront-oai.cloudfront_access_identity_path"
+      default_cache_behavior:
+        allowed_methods: ["GET", "HEAD", "OPTIONS"]
+        cached_methods: ["GET", "HEAD"]
+        target_origin_id: "S3Origin"
+        viewer_protocol_policy: "redirect-to-https"
+        min_ttl: 0
+        default_ttl: 3600
+        max_ttl: 86400
+        forwarded_values:
+          query_string: false
+          cookies:
+            forward: "none"
+      restrictions:
+        geo_restriction:
+          restriction_type: "none"
+      viewer_certificate:
+        cloudfront_default_certificate: true
+
+  # Cognito User Pool - #4 in diagram
+  - name: "cognito-user-pool"
+    type: "cognito_user_pool.CognitoUserPool"
+    args:
+      name: "business-webapp-users"
+      auto_verified_attributes: ["email"]
+      schema: 
+        - name: "email"
+          attributeDataType: "String"
+          required: true
+      tags:
+        Name: "WebApp User Authentication"
+
+  # API Gateway - #3 in diagram
+  - name: "api-gateway"
+    type: "api_gateway_rest_api.ApiGatewayRestApi"
+    args:
+      name: "business-webapp-api"
+      description: "API for WebSocket integration"
+      endpoint_configuration:
+        types: ["REGIONAL"]
+      tags:
+        Name: "WebApp API Gateway"
+
+  # WebSocket API
+  - name: "websocket-api"
+    type: "apigatewayv2_api.Apigatewayv2Api"
+    args:
+      name: "business-webapp-websocket"
+      protocol_type: "WEBSOCKET"
+      route_selection_expression: "$request.body.action"
+      tags:
+        Name: "WebSocket Endpoint"
+
+  # SQS FIFO Queue - #5 in diagram
+  - name: "sqs-fifo-queue"
+    type: "sqs_queue.SqsQueue"
+    args:
+      name: "business-webapp-queue.fifo"
+      fifo_queue: true
+      content_based_deduplication: true
+      tags:
+        Name: "WebApp SQS FIFO Queue"
+
+  # DynamoDB Tables - Policy Store and Config Store
+  - name: "dynamodb-policy"
+    type: "dynamodb_table.DynamodbTable"
+    args:
+      name: "business-webapp-policy-store"
+      billing_mode: "PAY_PER_REQUEST"
+      hash_key: "userId"
+      attribute:
+        - name: "userId"
+          type: "S"
+      tags:
+        Name: "Policy Store for authenticated users"
+
+  - name: "dynamodb-config"
+    type: "dynamodb_table.DynamodbTable"
+    args:
+      name: "business-webapp-config-store"
+      billing_mode: "PAY_PER_REQUEST"
+      hash_key: "configId"
+      attribute:
+        - name: "configId"
+          type: "S"
+      tags:
+        Name: "Use Case Configuration Store"
+
+  # Lambda Functions - #4 (custom authorizer), #7 (main processing)
+  - name: "lambda-authorizer"
+    type: "lambda_function.LambdaFunction"
+    args:
+      function_name: "business-webapp-authorizer"
+      runtime: "nodejs18.x"
+      handler: "authorizer.handler"
+      role: "ref:lambda-authorizer-role.arn"
+      filename: "lambda-placeholder.zip"  # Placeholder, would be a real file in production
+      tags:
+        Name: "Custom Authorizer Lambda"
+
+  - name: "lambda-main"
+    type: "lambda_function.LambdaFunction" 
+    args:
+      function_name: "business-webapp-processor"
+      runtime: "nodejs18.x"
+      handler: "index.handler"
+      role: "ref:lambda-main-role.arn"
+      filename: "lambda-placeholder.zip"  # Placeholder, would be a real file in production
+      environment:
+        variables:
+          SQS_QUEUE_URL: "ref:sqs-fifo-queue.id"
+          CONFIG_TABLE: "ref:dynamodb-config.id"
+      tags:
+        Name: "Main Processing Lambda"
+
+  # Bedrock Agents - #7 in diagram
+  # Comment out until AWS provider supports Bedrock Agent resources
+  # - name: "bedrock-agent"
+  #   type: "bedrock_agent.BedrockAgent"
+  #   args:
+  #     name: "business-webapp-agent"
+  #     action_group:
+  #       - name: "WebAppActions"
+  #         description: "Actions for web application"
+  #     tags:
+  #       Name: "Amazon Bedrock Agent"
+
+  # CloudWatch - #9 in diagram
+  - name: "cloudwatch-dashboard"
+    type: "cloudwatch_dashboard.CloudwatchDashboard"
+    args:
+      dashboard_name: "business-webapp-dashboard"
+      dashboard_body: "{\"widgets\":[]}"
+
+  # Parameter Store for UI config
+  - name: "parameter-store"
+    type: "ssm_parameter.SsmParameter"
+    args:
+      name: "/business/webapp/config"
+      type: "String"
+      value: "{\"apiEndpoint\":\"https://ref:api-gateway.execution_arn\",\"userPoolId\":\"ref:cognito-user-pool.id\"}"
+      tags:
+        Name: "WebApp Configuration Parameters"

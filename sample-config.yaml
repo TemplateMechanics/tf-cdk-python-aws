@@ -1,0 +1,23 @@
+aws_resources:
+- args:
+    cidr_block: 10.0.0.0/16
+    tags:
+      Name: example-vpc
+  name: vpc-example
+  type: vpc.Vpc
+- args:
+    availability_zone: us-east-1a
+    cidr_block: 10.0.1.0/24
+    tags:
+      Name: example-subnet
+    vpc_id: ref:vpc-example.id
+  name: subnet-example
+  type: subnet.Subnet
+environment: dev
+region: us-east-1
+service: example
+tags:
+  Owner: example-user
+  Project: TerraformExample
+team: Demo
+
